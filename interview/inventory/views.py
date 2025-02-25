@@ -6,6 +6,25 @@ from interview.inventory.models import Inventory, InventoryLanguage, InventoryTa
 from interview.inventory.schemas import InventoryMetaData
 from interview.inventory.serializers import InventoryLanguageSerializer, InventorySerializer, InventoryTagSerializer, InventoryTypeSerializer
 
+from datetime import datetime
+
+class InventoryListGetItemsView(APIView):
+    serializer_class = InventorySerializer
+
+    def get(self, request: Request, *args, **kwargs) -> Response:
+        created_after_str = request.query_params.get('created_after', None)
+
+        if not created_after_str:
+            return Response({'error': 'created_after parameter is required'}, status=400)
+
+        try:
+            created_after = datetime.fromisoformat(created_after_str.replace('Z', '+00:00'))
+        except ValueError:
+            return Response({'error': 'Invalid created_after date format. Please use ISO format.'}, status=400)
+
+        queryset = Inventory.objects.filter(created_at__gt=created_after) # Filtering by created_at
+        serializer = self.serializer_class(queryset, many=True)
+        return Response(serializer.data, status=200)
 
 class InventoryListCreateView(APIView):
     queryset = Inventory.objects.all()
