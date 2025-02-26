@@ -1,28 +1,82 @@
-from datetime import datetime, timezone, timedelta
-
-from rest_framework.test import APITestCase
 from django.urls import reverse
+from rest_framework import status
+from rest_framework.test import APITestCase
+from datetime import datetime, timedelta
 
+from interview.inventory.models import Inventory, InventoryType, InventoryLanguage, InventoryTag
 
-class TestInventoryListGetItemsView(APITestCase):
-    @staticmethod
-    def assert_inventory_items_equal(item_data, inventory_item):
-        assert item_data['id'] == inventory_item.id
-        assert item_data['name'] == inventory_item.name
-        assert item_data['type'] == inventory_item.type.id
-        assert item_data['language'] == inventory_item.language.id
-        assert item_data['tags'] == [inventory_tag.id for inventory_tag in inventory_item.tags.all()]
-        assert item_data['metadata'] == inventory_item.metadata
+class InventoryListGetItemsViewTest(APITestCase):
 
-    def test_get_inventory_items_created_after_valid_date(self, api_client, inventory_items):
-        created_after_date = datetime.now(timezone.utc) - timedelta(days=1.5) # Date between item1 and item2/item3 creation
+    def setUp(self):
+        self.url = reverse('inventory-items')
+        self.inventory_type = InventoryType.objects.create(name='Book')
+        self.inventory_language = InventoryLanguage.objects.create(name='English')
+        self.inventory_tag_1 = InventoryTag.objects.create(name='Fiction')
+        self.inventory_tag_2 = InventoryTag.objects.create(name='Non-Fiction')
 
-        url = reverse('inventory-items-created-after') # Assuming you named your url 'inventory-items-created-after'
-        response = api_client.get(url, {'created_after': created_after_date.isoformat()})
+        now = datetime.now()
+        for i in range(5):
+            created_at = now - timedelta(days=i)
+            inventory_item = Inventory.objects.create(
+                name=f'Item {i+1}',
+                type=self.inventory_type,
+                language=self.inventory_language,
+                metadata={'key': 'value'},
+            )
+            inventory_item.created_at = created_at
+            inventory_item.save()
+            inventory_item.tags.add(self.inventory_tag_1)
 
-        assert response.status_code == 200
-        data = response.json()
+    def test_created_after_required(self):
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data, {'error': 'created_after parameter is required'})
 
-        assert len(data) == 2 # Expecting item2 and item3
-        self.assert_inventory_items_equal(data[0], inventory_items[1]) # item2
-        self.assert_inventory_items_equal(data[1], inventory_items[2]) # item3
+    def test_invalid_created_after_format(self):
+        response = self.client.get(self.url, {'created_after': 'invalid-date-format'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data, {'error': 'Invalid created_after date format. Please use ISO format.'})
+
+    def test_invalid_limit_format(self):
+        created_after_str = datetime.now().isoformat() + 'Z'
+        response = self.client.get(self.url, {'created_after': created_after_str, 'limit': 'abc'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data, {'error': 'Limit must be an integer'})
+
+    def test_valid_pagination(self):
+        created_after_str = (datetime.now() - timedelta(days=7)).isoformat() + 'Z'
+        response = self.client.get(self.url, {'created_after': created_after_str, 'page': '1', 'limit': '2'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+        self.assertEqual(response.data[0]['name'], 'Item 5')
+        self.assertEqual(response.data[1]['name'], 'Item 4')
+
+        response_page_2 = self.client.get(self.url, {'created_after': created_after_str, 'page': '2', 'limit': '2'})
+        self.assertEqual(response_page_2.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response_page_2.data), 2)
+        self.assertEqual(response_page_2.data[0]['name'], 'Item 3')
+        self.assertEqual(response_page_2.data[1]['name'], 'Item 2')
+
+        response_page_3 = self.client.get(self.url, {'created_after': created_after_str, 'page': '3', 'limit': '2'})
+        self.assertEqual(response_page_3.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response_page_3.data), 1)
+        self.assertEqual(response_page_3.data[0]['name'], 'Item 1')
+
+    def test_max_limit_enforcement(self):
+        created_after_str = (datetime.now() - timedelta(days=7)).isoformat() + 'Z'
+        response = self.client.get(self.url, {'created_after': created_after_str, 'limit': '5'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 3)
+
+    def test_empty_page(self):
+        created_after_str = (datetime.now() - timedelta(days=7)).isoformat() + 'Z'
+        response = self.client.get(self.url, {'created_after': created_after_str, 'page': '999'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, {'data': [], 'message': 'Page is empty'})
+
+    def test_default_limit_and_page(self):
+        created_after_str = (datetime.now() - timedelta(days=7)).isoformat() + 'Z'
+        response = self.client.get(self.url, {'created_after': created_after_str})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 3)
+        self.assertEqual(response.data[0]['name'], 'Item 5')
