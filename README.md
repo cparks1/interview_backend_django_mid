@@ -1,6 +1,11 @@
-TMT Insights Take Home Test - Interviewed for backend focused Senior Software Engineer position
-Given 2 hours to complete the full take home test
-The full take home test originally being here: https://github.com/TMT-Insights/interview_backend_django_mid
+## Notes on the [TMT Insights](https://tmtinsights.com/) Take Home Test
+
+I interviewed for a backend focused Senior Software Engineer position at [TMT Insights](https://tmtinsights.com/).
+
+
+I was requested to complete this take home test by [Holly Perry](mailto:holly.perry@tmtinsights.com), one of the HR employees at TMT Insights. I was given 2 hours to complete the full take home test, which was originally present here on GitHub: https://github.com/TMT-Insights/interview_backend_django_mid. The expectations were that you were likely only going to complete a couple challenges, and not all eight challenges.
+
+After submitting my completed take home test (found in this repo), I interviewed with [Michael Gilbert](https://tmtinsights.com/meet-michael-gilly-gilbert/), [John Stinson](https://tmtinsights.com/meet-john-stinson/), and [Brett Beers](https://www.linkedin.com/in/brett-beers-66675947) at TMT Insights.
 
 ## Instructions
 For this project, you will complete the following coding challenges. Each challenge is a standalone problem and should function independently of the other challenges. When adding code to this repository, assume this is a production codebase: use best practices and style accordingly. Clone this repository then push it to your github **(DO NOT FORK)** and send us a link to the project. Create a unique branch for each problem you are solving. The branches should use the title of the challenge named with the following convention: "challenge-#-name" (eg "challenge-1-inventory-dates", "challenge-2-deactivate-order" etc.). Your code should be free of basic linting errors and shouldn't have any unused imports. **If you are doing any formatting, it should happen on a different commit AFTER you commited your answer for the challenge.** Do not add any other packages to this project to complete the work. You will be expected to write basic tests so we can validate your code is functioning with the correct inputs and outputs. Once you complete each challenge you will make a PR to your repository on your github for the branch/challenge you completed.
